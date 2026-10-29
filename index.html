@@ -30,11 +30,7 @@
   <meta name="twitter:image:alt" content="The Surat Dinner Mission: Batman vs Nightwing, 24 spots, comic style title card">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #faf9f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-    #__bundler_loading { position: fixed; bottom: 20px; right: 20px; font: 13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; color: #666; background: #fff; padding: 8px 14px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.12); z-index: 10000; }
-    #__bundler_thumbnail { position: fixed; inset: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #faf9f5; z-index: 9999; }
-    #__bundler_thumbnail svg { width: 100%; height: 100%; object-fit: contain; }
-    #__bundler_placeholder { color: #999; font-size: 14px; }
+    body { background: #0d0d12; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
   </style>
   <noscript>
     <style>#__bundler_loading { display: none; }</style>
@@ -44,8 +40,97 @@
   </noscript>
 </head>
 <body>
-  <div id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#111"></rect><text x="50" y="62" text-anchor="middle" font-family="Impact,sans-serif" font-size="34" fill="#FFD400">V&amp;U</text></svg></div>
-  <div id="__bundler_loading">Unpacking...</div>
+  <!-- Intro: Batman vs Nightwing video. Plays while the bundle unpacks, then fades out over the app.
+       Must contain no <script>: the bundler re-runs every script in the document after the swap. -->
+  <div id="__bundler_thumbnail" class="sdm-intro">
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Bangers&display=swap');
+      .sdm-intro { position: fixed; inset: 0; z-index: 2147483000; background: #0d0d12; color: #F4EEDF; font-family: Bangers, Impact, sans-serif; letter-spacing: 1px; transition: opacity .45s ease; }
+      .sdm-intro.out { opacity: 0; pointer-events: none; }
+      .sdm-intro video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #0d0d12; }
+      .sdm-intro .shade { position: absolute; inset: 0; background: linear-gradient(#0d0d12cc, transparent 22%, transparent 75%, #0d0d12dd); }
+      .sdm-intro .ttl { position: absolute; top: 18px; left: 16px; right: 16px; text-align: center; color: #FFD400; font-size: clamp(30px, 4.4vw, 54px); line-height: .95; transform: rotate(-2deg); text-shadow: 3px 3px 0 #1E6BFF, 5px 5px 0 #111; }
+      .sdm-intro .bar { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; align-items: center; gap: 10px; }
+      .sdm-intro #__bundler_loading { margin-right: auto; background: #FFD400; color: #111; font-size: 20px; padding: 6px 14px; box-shadow: 4px 4px 0 #000; transform: rotate(-1.5deg); }
+      .sdm-intro button { font: inherit; font-size: 20px; letter-spacing: 1px; border: 0; cursor: pointer; padding: 6px 14px; box-shadow: 4px 4px 0 #000; }
+      .sdm-intro .snd { background: #F4EEDF; color: #111; }
+      .sdm-intro .skip { background: #1E6BFF; color: #fff; }
+      @media (max-aspect-ratio: 1/1) {
+        .sdm-intro { display: flex; flex-direction: column; justify-content: center; gap: 26px; padding: 0 16px; }
+        .sdm-intro video { position: static; height: auto; aspect-ratio: 16 / 9; box-shadow: 6px 6px 0 #1E6BFF; }
+        .sdm-intro .shade { display: none; }
+        .sdm-intro .ttl, .sdm-intro .bar { position: static; }
+        .sdm-intro .ttl { order: -1; font-size: 44px; }
+        .sdm-intro .bar { flex-wrap: wrap; justify-content: center; gap: 14px; }
+        .sdm-intro #__bundler_loading { flex-basis: 100%; margin: 0; text-align: center; background: none; color: #FFD400; box-shadow: none; transform: none; padding: 0; }
+      }
+    </style>
+    <video src="intro.mp4" poster="intro-poster.jpg" autoplay muted playsinline preload="auto"></video>
+    <div class="shade"></div>
+    <div class="ttl">THE SURAT<br>DINNER MISSION</div>
+    <div class="bar">
+      <div id="__bundler_loading">SUITING UP…</div>
+      <button type="button" class="snd">SOUND ON</button>
+      <button type="button" class="skip">SKIP ▸</button>
+    </div>
+  </div>
+  <script>
+    // Plays the intro in full once per session (skippable); after that it only shows while loading.
+    (function () {
+      var el = document.getElementById('__bundler_thumbnail');
+      var v = el.querySelector('video');
+      var snd = el.querySelector('.snd');
+      var skip = el.querySelector('.skip');
+      var seen = false;
+      try { seen = sessionStorage.getItem('sdm_intro_seen') === '1'; sessionStorage.setItem('sdm_intro_seen', '1'); } catch (e) {}
+      var ready = false, played = seen, gone = false;
+
+      function finish() { played = true; done(); }
+      function done() {
+        if (gone || !ready || !played) return;
+        gone = true;
+        el.classList.add('out');
+        document.documentElement.style.overflow = '';
+        setTimeout(function () { v.pause(); el.remove(); }, 500);
+      }
+
+      v.muted = true;
+      v.addEventListener('ended', function () {
+        played = true;
+        // Still unpacking on a slow connection: keep the loop going rather than freeze on the last frame.
+        if (ready) done(); else { v.currentTime = 0; v.play().catch(function () {}); }
+      });
+      v.addEventListener('error', finish);
+      var p = v.play();
+      if (p && p.catch) p.catch(finish); // autoplay refused (e.g. low power mode): poster shows while loading
+      setTimeout(finish, 15000); // stalled video never holds the page hostage
+
+      snd.addEventListener('click', function () {
+        v.muted = !v.muted;
+        snd.textContent = v.muted ? 'SOUND ON' : 'SOUND OFF';
+        if (!v.muted && v.paused) v.play().catch(function () {});
+      });
+      skip.addEventListener('click', function () {
+        skip.textContent = 'ALMOST…';
+        finish();
+      });
+
+      window.__intro = {
+        // Called right after the bundler swaps documents; re-inserting in the same task keeps the video playing.
+        adopt: function () {
+          document.body.appendChild(el);
+          document.documentElement.style.overflow = 'hidden';
+        },
+        ready: function () {
+          setTimeout(function () {
+            ready = true;
+            el.querySelector('#__bundler_loading').textContent = 'TABLE IS READY';
+            done();
+          }, 300);
+        }
+      };
+    })();
+  </script>
 
   <script>
     
@@ -236,7 +321,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
 
     const uuids = Object.keys(manifest);
-    setStatus('Unpacking ' + uuids.length + ' assets...');
+    setStatus('SUITING UP…');
 
     await Promise.all(uuids.map(async (uuid) => {
       const entry = manifest[uuid];
@@ -301,7 +386,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // consumers read these Blobs directly. Survives the swap like the error sink.
     window.__resourceBlobs = resourceBlobs;
 
-    setStatus('Rendering...');
+    setStatus('HEADING TO DINNER…');
     // Page uuids have no blob here — they ride inside about:blank#<uuid>
     // frame markers the pass below resolves after the swap.
     for (const uuid of uuids) {
@@ -334,6 +419,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // preserve ordering (React before ReactDOM before Babel before text/babel).
     const doc = new DOMParser().parseFromString(template, 'text/html');
     document.documentElement.replaceWith(doc.documentElement);
+    if (window.__intro) window.__intro.adopt();
 
     // Resolve page-frame markers: mint this document's own blob for each
     // framed page — from local text when this is the root, otherwise by
@@ -383,6 +469,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (window.Babel && typeof window.Babel.transformScriptTags === 'function') {
       window.Babel.transformScriptTags();
     }
+    if (window.__intro) window.__intro.ready();
   } catch (err) {
     setStatus('Error unpacking: ' + err.message);
     console.error('Bundle unpack error:', err);
